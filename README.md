@@ -88,15 +88,54 @@ CREATE EXTENSION vector;
 
 ## API 엔드포인트
 
-- PDF 인덱싱: `POST /rag/index-pdfs`
+### 문서 인덱싱 API
 
+- PDF 파일 인덱싱: `POST /rag/index-pdf`
   ```json
   {
-    "directoryPath": "/path/to/pdf/directory"
+    "filePath": "/path/to/file.pdf"
+  }
+  ```
+
+- 디렉토리 인덱싱: `POST /rag/index-directory`
+  ```json
+  {
+    "directoryPath": "/path/to/directory"
+  }
+  ```
+  지정된 디렉토리 내의 모든 지원되는 파일 형식(PDF, TXT, MD, HTML)을 자동으로 인덱싱합니다.
+
+- 텍스트 파일 인덱싱: `POST /rag/index-text`
+  ```json
+  {
+    "filePath": "/path/to/file.txt"
+  }
+  ```
+
+- 마크다운 파일 인덱싱: `POST /rag/index-markdown`
+  ```json
+  {
+    "filePath": "/path/to/file.md"
+  }
+  ```
+
+- HTML 파일 인덱싱: `POST /rag/index-html`
+  ```json
+  {
+    "filePath": "/path/to/file.html"
+  }
+  ```
+
+- 웹 URL 인덱싱: `POST /rag/index-url`
+  ```json
+  {
+    "url": "https://example.com"
   }
   ```
 
 - 웹 검색: `GET /rag/search?query=your_query`
+
+### RAG 쿼리 API
 
 - RAG 쿼리: `GET /rag/query?query=your_query`
 

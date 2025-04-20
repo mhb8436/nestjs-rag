@@ -49,4 +49,40 @@ export class RagController {
   async queryWithWebSearch(@Query('query') query: string) {
     return this.ragService.queryWithWebSearch(query);
   }
+
+  @Post('index-directory')
+  async indexDirectory(@Body('directoryPath') directoryPath: string) {
+    await this.ragService.indexDirectory(directoryPath);
+    return { message: 'Directory indexed successfully' };
+  }
+
+  @Post('index-text')
+  async indexTextFile(@Body('filePath') filePath: string) {
+    await this.ragService.indexTextFile(filePath);
+    return { message: 'Text file indexed successfully' };
+  }
+
+  @Post('index-markdown')
+  async indexMarkdownFile(@Body('filePath') filePath: string) {
+    await this.ragService.indexMarkdownFile(filePath);
+    return { message: 'Markdown file indexed successfully' };
+  }
+
+  @Post('index-html')
+  async indexHTMLFile(@Body('filePath') filePath: string) {
+    await this.ragService.indexHTMLFile(filePath);
+    return { message: 'HTML file indexed successfully' };
+  }
+
+  @Post('index-url')
+  async indexURL(@Body('url') url: string) {
+    await this.ragService.indexURL(url);
+    return { message: 'URL indexed successfully' };
+  }
+
+  @Post('index-pdf')
+  async indexPDF(@Body('filePath') filePath: string) {
+    await this.ragService.indexPDF(filePath);
+    return { message: 'PDF file indexed successfully' };
+  }
 }

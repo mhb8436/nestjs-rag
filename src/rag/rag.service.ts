@@ -5,10 +5,15 @@ import { Repository } from 'typeorm';
 import { Document } from './entities/document.entity';
 import { Ollama } from '@langchain/community/llms/ollama';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
+import { TextLoader } from '@langchain/community/document_loaders/fs/text';
+import { MarkdownLoader } from '@langchain/community/document_loaders/fs/markdown';
+import { CheerioWebBaseLoader } from '@langchain/community/document_loaders/web/cheerio';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { HNSWLib } from '@langchain/community/vectorstores/hnswlib';
 import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
 import axios from 'axios';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class RagService {
@@ -32,10 +37,66 @@ export class RagService {
     });
   }
 
-  async indexPDFs(directoryPath: string): Promise<void> {
-    const loader = new PDFLoader(directoryPath);
-    const docs = await loader.load();
+  async indexDirectory(directoryPath: string): Promise<void> {
+    const files = fs.readdirSync(directoryPath);
+    
+    for (const file of files) {
+      const filePath = path.join(directoryPath, file);
+      const fileExt = path.extname(file).toLowerCase();
 
+      if (fs.statSync(filePath).isDirectory()) {
+        await this.indexDirectory(filePath);
+        continue;
+      }
+
+      switch (fileExt) {
+        case '.pdf':
+          await this.indexPDF(filePath);
+          break;
+        case '.txt':
+          await this.indexTextFile(filePath);
+          break;
+        case '.md':
+          await this.indexMarkdownFile(filePath);
+          break;
+        case '.html':
+          await this.indexHTMLFile(filePath);
+          break;
+      }
+    }
+  }
+
+  async indexTextFile(filePath: string): Promise<void> {
+    const loader = new TextLoader(filePath);
+    const docs = await loader.load();
+    await this.processDocuments(docs, 'text');
+  }
+
+  async indexMarkdownFile(filePath: string): Promise<void> {
+    const loader = new MarkdownLoader(filePath);
+    const docs = await loader.load();
+    await this.processDocuments(docs, 'markdown');
+  }
+
+  async indexHTMLFile(filePath: string): Promise<void> {
+    const loader = new CheerioWebBaseLoader(`file://${filePath}`);
+    const docs = await loader.load();
+    await this.processDocuments(docs, 'html');
+  }
+
+  async indexURL(url: string): Promise<void> {
+    const loader = new CheerioWebBaseLoader(url);
+    const docs = await loader.load();
+    await this.processDocuments(docs, 'web');
+  }
+
+  async indexPDF(filePath: string): Promise<void> {
+    const loader = new PDFLoader(filePath);
+    const docs = await loader.load();
+    await this.processDocuments(docs, 'pdf');
+  }
+
+  private async processDocuments(docs: any[], sourceType: string): Promise<void> {
     const splitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
       chunkOverlap: 200,
@@ -49,7 +110,7 @@ export class RagService {
       const document = new Document();
       document.title = doc.metadata.source;
       document.content = doc.pageContent;
-      document.source = 'pdf';
+      document.source = sourceType;
       document.embedding = embedding;
 
       await this.documentRepository.save(document);
