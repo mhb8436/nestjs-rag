@@ -128,6 +128,20 @@ CREATE EXTENSION vector;
   }
   ```
 
+### LLM과 웹 검색 통합 API
+
+- LLM과 웹 검색 통합 쿼리: `GET /rag/query-with-web-search?query=your_question`
+
+  이 엔드포인트는 LLM의 답변 품질을 자동으로 개선하는 기능을 제공합니다:
+  1. 먼저 LLM이 직접 질문에 답변을 시도합니다.
+  2. LLM의 답변이 너무 짧거나 불확실한 경우, 자동으로 웹 검색을 수행합니다.
+  3. 웹 검색 결과를 바탕으로 LLM이 더 나은 답변을 제공합니다.
+
+  사용 예시:
+  ```bash
+  curl -X GET "http://localhost:3000/rag/query-with-web-search?query=What is the latest version of TypeScript?"
+  ```
+
 ## 사용 예시
 
 ### 코드 자동완성 사용 예시

@@ -123,4 +123,29 @@ export class RagService {
 
     return this.llm.invoke(prompt);
   }
+
+  async queryWithWebSearch(query: string): Promise<string> {
+    // First try to get answer from LLM
+    const initialAnswer = await this.llm.invoke(query);
+    
+    // Check if the answer is too short or contains uncertainty indicators
+    const isLowConfidence = initialAnswer.length < 50 || 
+      initialAnswer.toLowerCase().includes("i don't know") ||
+      initialAnswer.toLowerCase().includes("i'm not sure") ||
+      initialAnswer.toLowerCase().includes("i'm uncertain") ||
+      initialAnswer.toLowerCase().includes("i can't answer");
+
+    if (isLowConfidence) {
+      // If LLM is uncertain, perform web search
+      const webSearchResult = await this.searchWeb(query);
+      
+      // Create a new prompt that includes the web search results
+      const enhancedPrompt = `Based on the following web search results, please provide a more detailed answer to the question: ${query}\n\nWeb Search Results:\n${webSearchResult}\n\nAnswer:`;
+      
+      // Get enhanced answer from LLM
+      return this.llm.invoke(enhancedPrompt);
+    }
+
+    return initialAnswer;
+  }
 }

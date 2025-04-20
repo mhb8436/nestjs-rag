@@ -44,4 +44,9 @@ export class RagController {
   ) {
     return this.ragService.generateCodeFromDescription(description, language);
   }
+
+  @Get('query-with-web-search')
+  async queryWithWebSearch(@Query('query') query: string) {
+    return this.ragService.queryWithWebSearch(query);
+  }
 }
