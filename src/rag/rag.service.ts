@@ -5,8 +5,7 @@ import { Repository } from 'typeorm';
 import { Document } from './entities/document.entity';
 import { Ollama } from '@langchain/community/llms/ollama';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
-import { TextLoader } from '@langchain/community/document_loaders/fs/text';
-import { MarkdownLoader } from '@langchain/community/document_loaders/fs/markdown';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { CheerioWebBaseLoader } from '@langchain/community/document_loaders/web/cheerio';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { HNSWLib } from '@langchain/community/vectorstores/hnswlib';
@@ -39,7 +38,7 @@ export class RagService {
 
   async indexDirectory(directoryPath: string): Promise<void> {
     const files = fs.readdirSync(directoryPath);
-    
+
     for (const file of files) {
       const filePath = path.join(directoryPath, file);
       const fileExt = path.extname(file).toLowerCase();
@@ -56,9 +55,6 @@ export class RagService {
         case '.txt':
           await this.indexTextFile(filePath);
           break;
-        case '.md':
-          await this.indexMarkdownFile(filePath);
-          break;
         case '.html':
           await this.indexHTMLFile(filePath);
           break;
@@ -70,12 +66,6 @@ export class RagService {
     const loader = new TextLoader(filePath);
     const docs = await loader.load();
     await this.processDocuments(docs, 'text');
-  }
-
-  async indexMarkdownFile(filePath: string): Promise<void> {
-    const loader = new MarkdownLoader(filePath);
-    const docs = await loader.load();
-    await this.processDocuments(docs, 'markdown');
   }
 
   async indexHTMLFile(filePath: string): Promise<void> {
@@ -96,7 +86,10 @@ export class RagService {
     await this.processDocuments(docs, 'pdf');
   }
 
-  private async processDocuments(docs: any[], sourceType: string): Promise<void> {
+  private async processDocuments(
+    docs: any[],
+    sourceType: string,
+  ): Promise<void> {
     const splitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000,
       chunkOverlap: 200,
@@ -188,9 +181,10 @@ export class RagService {
   async queryWithWebSearch(query: string): Promise<string> {
     // First try to get answer from LLM
     const initialAnswer = await this.llm.invoke(query);
-    
+
     // Check if the answer is too short or contains uncertainty indicators
-    const isLowConfidence = initialAnswer.length < 50 || 
+    const isLowConfidence =
+      initialAnswer.length < 50 ||
       initialAnswer.toLowerCase().includes("i don't know") ||
       initialAnswer.toLowerCase().includes("i'm not sure") ||
       initialAnswer.toLowerCase().includes("i'm uncertain") ||
@@ -199,10 +193,10 @@ export class RagService {
     if (isLowConfidence) {
       // If LLM is uncertain, perform web search
       const webSearchResult = await this.searchWeb(query);
-      
+
       // Create a new prompt that includes the web search results
       const enhancedPrompt = `Based on the following web search results, please provide a more detailed answer to the question: ${query}\n\nWeb Search Results:\n${webSearchResult}\n\nAnswer:`;
-      
+
       // Get enhanced answer from LLM
       return this.llm.invoke(enhancedPrompt);
     }

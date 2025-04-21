@@ -7,7 +7,7 @@ export class RagController {
 
   @Post('index-pdfs')
   async indexPDFs(@Body('directoryPath') directoryPath: string) {
-    await this.ragService.indexPDFs(directoryPath);
+    await this.ragService.indexPDF(directoryPath);
     return { message: 'PDFs indexed successfully' };
   }
 
@@ -60,12 +60,6 @@ export class RagController {
   async indexTextFile(@Body('filePath') filePath: string) {
     await this.ragService.indexTextFile(filePath);
     return { message: 'Text file indexed successfully' };
-  }
-
-  @Post('index-markdown')
-  async indexMarkdownFile(@Body('filePath') filePath: string) {
-    await this.ragService.indexMarkdownFile(filePath);
-    return { message: 'Markdown file indexed successfully' };
   }
 
   @Post('index-html')

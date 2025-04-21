@@ -77,6 +77,7 @@ psql -U postgres
 -- 데이터베이스 생성
 CREATE DATABASE rag_db;
 
+
 -- 데이터베이스 연결
 \c rag_db
 
@@ -91,95 +92,117 @@ CREATE EXTENSION vector;
 ### 문서 인덱싱 API
 
 - PDF 파일 인덱싱: `POST /rag/index-pdf`
-  ```json
-  {
-    "filePath": "/path/to/file.pdf"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/index-pdf \
+    -H "Content-Type: application/json" \
+    -d '{"filePath": "/path/to/file.pdf"}'
   ```
 
 - 디렉토리 인덱싱: `POST /rag/index-directory`
-  ```json
-  {
-    "directoryPath": "/path/to/directory"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/index-directory \
+    -H "Content-Type: application/json" \
+    -d '{"directoryPath": "/path/to/directory"}'
   ```
+
   지정된 디렉토리 내의 모든 지원되는 파일 형식(PDF, TXT, MD, HTML)을 자동으로 인덱싱합니다.
 
 - 텍스트 파일 인덱싱: `POST /rag/index-text`
-  ```json
-  {
-    "filePath": "/path/to/file.txt"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/index-text \
+    -H "Content-Type: application/json" \
+    -d '{"filePath": "/path/to/file.txt"}'
   ```
 
 - 마크다운 파일 인덱싱: `POST /rag/index-markdown`
-  ```json
-  {
-    "filePath": "/path/to/file.md"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/index-markdown \
+    -H "Content-Type: application/json" \
+    -d '{"filePath": "/path/to/file.md"}'
   ```
 
 - HTML 파일 인덱싱: `POST /rag/index-html`
-  ```json
-  {
-    "filePath": "/path/to/file.html"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/index-html \
+    -H "Content-Type: application/json" \
+    -d '{"filePath": "/path/to/file.html"}'
   ```
 
 - 웹 URL 인덱싱: `POST /rag/index-url`
-  ```json
-  {
-    "url": "https://example.com"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/index-url \
+    -H "Content-Type: application/json" \
+    -d '{"url": "https://example.com"}'
   ```
 
 - 웹 검색: `GET /rag/search?query=your_query`
+
+  ```bash
+  curl -X GET "http://localhost:3000/rag/search?query=your_query"
+  ```
 
 ### RAG 쿼리 API
 
 - RAG 쿼리: `GET /rag/query?query=your_query`
 
+  ```bash
+  curl -X GET "http://localhost:3000/rag/query?query=your_query"
+  ```
+
 ### 코드 자동완성 API
 
 - 코드 완성: `POST /rag/complete-code`
 
-  ```json
-  {
-    "context": "function calculateSum(a, b) {",
-    "language": "typescript"
-  }
+  ```bash
+  curl -X POST http://localhost:3000/rag/complete-code \
+    -H "Content-Type: application/json" \
+    -d '{
+      "context": "function calculateSum(a, b) {",
+      "language": "typescript"
+    }'
   ```
 
 - 코드 개선 제안: `POST /rag/suggest-improvements`
 
-  ```json
-  {
-    "code": "function sum(a, b) { return a + b; }",
-    "language": "typescript"
-  }
+  ```bash
+  curl -X POST http://localhost:3000/rag/suggest-improvements \
+    -H "Content-Type: application/json" \
+    -d '{
+      "code": "function sum(a, b) { return a + b; }",
+      "language": "typescript"
+    }'
   ```
 
 - 코드 생성: `POST /rag/generate-code`
-  ```json
-  {
-    "description": "Create a function that calculates the factorial of a number",
-    "language": "typescript"
-  }
+
+  ```bash
+  curl -X POST http://localhost:3000/rag/generate-code \
+    -H "Content-Type: application/json" \
+    -d '{
+      "description": "Create a function that calculates the factorial of a number",
+      "language": "typescript"
+    }'
   ```
 
 ### LLM과 웹 검색 통합 API
 
 - LLM과 웹 검색 통합 쿼리: `GET /rag/query-with-web-search?query=your_question`
 
-  이 엔드포인트는 LLM의 답변 품질을 자동으로 개선하는 기능을 제공합니다:
-  1. 먼저 LLM이 직접 질문에 답변을 시도합니다.
-  2. LLM의 답변이 너무 짧거나 불확실한 경우, 자동으로 웹 검색을 수행합니다.
-  3. 웹 검색 결과를 바탕으로 LLM이 더 나은 답변을 제공합니다.
-
-  사용 예시:
   ```bash
   curl -X GET "http://localhost:3000/rag/query-with-web-search?query=What is the latest version of TypeScript?"
   ```
+
+  이 엔드포인트는 LLM의 답변 품질을 자동으로 개선하는 기능을 제공합니다:
+
+  1. 먼저 LLM이 직접 질문에 답변을 시도합니다.
+  2. LLM의 답변이 너무 짧거나 불확실한 경우, 자동으로 웹 검색을 수행합니다.
+  3. 웹 검색 결과를 바탕으로 LLM이 더 나은 답변을 제공합니다.
 
 ## 사용 예시
 
