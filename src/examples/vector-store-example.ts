@@ -1,5 +1,5 @@
 import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
-import { HNSWLib } from '@langchain/community/vectorstores/hnswlib';
+import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -43,17 +43,13 @@ async function demonstrateVectorStore() {
     documents.map((doc) => doc.metadata),
   );
 
-  // 5. 벡터 저장소 생성 및 문서 저장
-  const vectorStore = await HNSWLib.fromDocuments(splitDocs, embeddings);
+  // 5. 메모리 벡터 저장소 생성 및 문서 저장
+  const vectorStore = await MemoryVectorStore.fromDocuments(
+    splitDocs,
+    embeddings,
+  );
 
-  // 6. 벡터 저장소 저장
-  const directory = path.join(process.cwd(), 'vector-store');
-  if (!fs.existsSync(directory)) {
-    fs.mkdirSync(directory);
-  }
-  await vectorStore.save(directory);
-
-  // 7. 검색 예제
+  // 6. 검색 예제
   const searchQueries = [
     '프로그래밍 언어에 대해 알려줘',
     '웹 개발과 관련된 기술은?',
@@ -71,20 +67,6 @@ async function demonstrateVectorStore() {
       console.log('출처:', doc.metadata.source);
     });
   }
-
-  // 8. 벡터 저장소 로드 예제
-  console.log('\n=== 벡터 저장소 로드 테스트 ===');
-  const loadedVectorStore = await HNSWLib.load(directory, embeddings);
-
-  const testQuery = '프로그래밍 언어의 특징';
-  console.log(`\n검색어: "${testQuery}"`);
-  const loadedResults = await loadedVectorStore.similaritySearch(testQuery, 2);
-
-  loadedResults.forEach((doc, index) => {
-    console.log(`\n[결과 ${index + 1}]`);
-    console.log('내용:', doc.pageContent);
-    console.log('출처:', doc.metadata.source);
-  });
 }
 
 // 실행
