@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Document } from './entities/document.entity';
 import { Ollama } from '@langchain/community/llms/ollama';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { CheerioWebBaseLoader } from '@langchain/community/document_loaders/web/cheerio';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { HNSWLib } from '@langchain/community/vectorstores/hnswlib';
 import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
+import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,13 +15,9 @@ import * as path from 'path';
 export class RagService {
   private llm: Ollama;
   private embeddings: OllamaEmbeddings;
-  private vectorStore: HNSWLib;
+  private vectorStore: MemoryVectorStore;
 
-  constructor(
-    private configService: ConfigService,
-    @InjectRepository(Document)
-    private documentRepository: Repository<Document>,
-  ) {
+  constructor(private configService: ConfigService) {
     this.llm = new Ollama({
       baseUrl: this.configService.get('OLLAMA_BASE_URL'),
       model: this.configService.get('OLLAMA_MODEL'),
@@ -34,6 +27,21 @@ export class RagService {
       baseUrl: this.configService.get('OLLAMA_BASE_URL'),
       model: this.configService.get('OLLAMA_MODEL'),
     });
+
+    // Initialize vector store
+    this.initVectorStore();
+  }
+
+  private async initVectorStore() {
+    try {
+      this.vectorStore = await MemoryVectorStore.fromExistingIndex(
+        this.embeddings,
+      );
+    } catch (error) {
+      console.error('Failed to initialize vector store:', error);
+      // If no existing index, create a new one
+      this.vectorStore = new MemoryVectorStore(this.embeddings);
+    }
   }
 
   async indexDirectory(directoryPath: string): Promise<void> {
@@ -97,16 +105,20 @@ export class RagService {
 
     const splitDocs = await splitter.splitDocuments(docs);
 
-    for (const doc of splitDocs) {
-      const embedding = await this.embeddings.embedQuery(doc.pageContent);
-
-      const document = new Document();
-      document.title = doc.metadata.source;
-      document.content = doc.pageContent;
-      document.source = sourceType;
-      document.embedding = embedding;
-
-      await this.documentRepository.save(document);
+    try {
+      // Add documents to vector store
+      await this.vectorStore.addDocuments(
+        splitDocs.map((doc) => ({
+          pageContent: doc.pageContent,
+          metadata: {
+            ...doc.metadata,
+            source: sourceType,
+          },
+        })),
+      );
+    } catch (error) {
+      console.error('Error adding documents to vector store:', error);
+      throw new Error('Failed to add documents to vector store');
     }
   }
 
@@ -136,19 +148,9 @@ export class RagService {
   }
 
   async queryRAG(query: string): Promise<string> {
-    const queryEmbedding = await this.embeddings.embedQuery(query);
+    const results = await this.vectorStore.similaritySearch(query, 5);
 
-    const similarDocs = await this.documentRepository
-      .createQueryBuilder('document')
-      .select()
-      .addSelect('document.embedding <-> :embedding', 'distance')
-      .setParameter('embedding', queryEmbedding)
-      .orderBy('distance', 'ASC')
-      .limit(5)
-      .getMany();
-
-    const context = similarDocs.map((doc) => doc.content).join('\n\n');
-
+    const context = results.map((doc) => doc.pageContent).join('\n\n');
     const prompt = `Context: ${context}\n\nQuestion: ${query}\n\nAnswer:`;
 
     return this.llm.invoke(prompt);
@@ -156,7 +158,6 @@ export class RagService {
 
   async completeCode(context: string, language: string): Promise<string> {
     const prompt = `You are an expert ${language} programmer. Complete the following code:\n\n${context}\n\nComplete the code:`;
-
     return this.llm.invoke(prompt);
   }
 
@@ -165,7 +166,6 @@ export class RagService {
     language: string,
   ): Promise<string> {
     const prompt = `You are an expert ${language} programmer. Review the following code and suggest improvements:\n\n${code}\n\nSuggestions:`;
-
     return this.llm.invoke(prompt);
   }
 
@@ -174,15 +174,12 @@ export class RagService {
     language: string,
   ): Promise<string> {
     const prompt = `You are an expert ${language} programmer. Generate code based on the following description:\n\n${description}\n\nGenerated code:`;
-
     return this.llm.invoke(prompt);
   }
 
   async queryWithWebSearch(query: string): Promise<string> {
-    // First try to get answer from LLM
     const initialAnswer = await this.llm.invoke(query);
 
-    // Check if the answer is too short or contains uncertainty indicators
     const isLowConfidence =
       initialAnswer.length < 50 ||
       initialAnswer.toLowerCase().includes("i don't know") ||
@@ -191,13 +188,8 @@ export class RagService {
       initialAnswer.toLowerCase().includes("i can't answer");
 
     if (isLowConfidence) {
-      // If LLM is uncertain, perform web search
       const webSearchResult = await this.searchWeb(query);
-
-      // Create a new prompt that includes the web search results
       const enhancedPrompt = `Based on the following web search results, please provide a more detailed answer to the question: ${query}\n\nWeb Search Results:\n${webSearchResult}\n\nAnswer:`;
-
-      // Get enhanced answer from LLM
       return this.llm.invoke(enhancedPrompt);
     }
 

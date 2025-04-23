@@ -160,7 +160,7 @@ CREATE EXTENSION vector;
 - 코드 완성: `POST /rag/complete-code`
 
   ```bash
-  curl -X POST http://localhost:3000/rag/complete-code \
+  curl -X POST http://localhost:3030/rag/complete-code \
     -H "Content-Type: application/json" \
     -d '{
       "context": "function calculateSum(a, b) {",
